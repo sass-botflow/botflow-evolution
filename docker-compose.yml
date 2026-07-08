@@ -1,7 +1,6 @@
 services:
   evolution-api:
     image: evoapicloud/evolution-api:v2.3.7
-    container_name: ${EVOLUTION_CONTAINER_NAME:-evolution-api}
     hostname: ${EVOLUTION_HOSTNAME:-evolution-api}
     restart: unless-stopped
     expose:
@@ -23,12 +22,10 @@ services:
       start_period: 40s
     networks:
       - default
-      - evolution-net
-      - easypanel-project
+      - easypanel
 
   redis:
     image: redis:7-alpine
-    container_name: ${REDIS_CONTAINER_NAME:-evolution-redis}
     hostname: ${REDIS_HOSTNAME:-redis}
     restart: unless-stopped
     command: redis-server --appendonly yes
@@ -41,7 +38,7 @@ services:
       retries: 5
       start_period: 5s
     networks:
-      evolution-net:
+      default:
         aliases:
           - ${REDIS_HOST:-redis}
 
@@ -50,8 +47,6 @@ volumes:
   evolution_redis_data:
 
 networks:
-  evolution-net:
-    name: ${DOCKER_NETWORK_NAME:-evolution-net}
-  easypanel-project:
+  easypanel:
     external: true
     name: ${EASYPANEL_PROJECT_NETWORK:-easypanel}
