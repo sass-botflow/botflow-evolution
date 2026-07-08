@@ -6,6 +6,58 @@
 2. **Evolution URL ghalat** — `sass-botflow_botflow-evolution:8080` ma kaynch
 3. **QR ma kayban** — Evolution v2.3.7 kayrj3 format jdid (`code` / nested `qrcode`)
 
+## Fix "Evolution API offline" (QR ma kayban)
+
+Modal kayban = connect OK. **"Evolution API offline"** = frontend Docker **ma kaywslch** l Evolution men dakhel.
+
+Evolution public (`https://evolution.api.botflow.ink`) khdam men browser, walakin **frontend container** khass URL **dakheli** (Docker network).
+
+### Step 1 — L9a smiya dyal container (Easypanel Terminal / SSH)
+
+```bash
+docker ps --format '{{.Names}}' | grep -i evolution
+```
+
+Example output: `sass-botflow_botflow-evolution-evolution-api-1` or `botflow-evolution_evolution-api`
+
+### Step 2 — Frontend Environment
+
+EasyPanel → **frontend** → Environment:
+
+```env
+EVOLUTION_API_URL=http://botflow-evolution_evolution-api:8080
+EVOLUTION_API_KEY=<nfs AUTHENTICATION_API_KEY dyal botflow-evolution>
+```
+
+Ila `docker ps` 3tak smiya okhra, use:
+```env
+EVOLUTION_API_URL=http://<container-name-without-port>:8080
+```
+
+**Mohim:** `EVOLUTION_API_KEY` = **character b character** nfs `AUTHENTICATION_API_KEY` f `botflow-evolution`.
+
+### Step 3 — Verify frontend 3la nfs network
+
+Frontend w `botflow-evolution` khass ykon 3la network **`easypanel`**.
+
+F Easypanel → frontend → Networks (ila kayn) → verify `easypanel` project network.
+
+### Step 4 — Redeploy frontend
+
+Save → Deploy → jarreb Connect.
+
+### Step 5 — Test connectivity (optional)
+
+Men Easypanel terminal, exec f frontend container:
+
+```bash
+docker exec -it $(docker ps -q -f name=frontend | head -1) wget -qO- --header="apikey: YOUR_KEY" http://botflow-evolution_evolution-api:8080/
+```
+
+Khass yrj3: `Welcome to the Evolution API`
+
+---
+
 ## Fix sri3 — EasyPanel frontend Environment (bla code)
 
 Zid/verify had vars w **Save → Redeploy frontend**:
