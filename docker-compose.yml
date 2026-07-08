@@ -23,6 +23,7 @@ services:
       start_period: 40s
     networks:
       - evolution-net
+      - easypanel-project
 
   redis:
     image: redis:7-alpine
@@ -50,3 +51,6 @@ volumes:
 networks:
   evolution-net:
     name: ${DOCKER_NETWORK_NAME:-evolution-net}
+  easypanel-project:
+    external: true
+    name: ${EASYPANEL_PROJECT_NETWORK:-easypanel}

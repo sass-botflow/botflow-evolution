@@ -92,7 +92,9 @@ Service hostnames and container names are configurable via environment variables
 | `REDIS_HOSTNAME` | `redis` | Hostname inside the Redis container |
 | `REDIS_HOST` | `redis` | DNS alias used by Evolution API to reach Redis |
 | `REDIS_CONTAINER_NAME` | `evolution-redis` | Docker container name |
-| `DOCKER_NETWORK_NAME` | `evolution-net` | Docker bridge network name |
+| `DOCKER_NETWORK_NAME` | `evolution-net` | Internal Redis/API bridge network |
+| `EASYPANEL_PROJECT_NETWORK` | `easypanel` | External Easypanel project network (Postgres) |
+| `EASYPANEL_PROJECT_NAME` | — | Easypanel project name (used in Postgres hostname) |
 | `EVOLUTION_PORT` | `8080` | Host port for local dev (`docker-compose.override.yml` only) |
 
 `CACHE_REDIS_URI` is assembled automatically in `docker-compose.yml` from `REDIS_HOST`, `REDIS_PORT`, and `REDIS_DB`.
@@ -146,9 +148,49 @@ curl http://localhost:8080/health
 This compose file is designed for Easypanel and similar platforms that merge a `docker-compose.override.yml` at deploy time.
 
 - The base `docker-compose.yml` uses `expose: 8080` only — no host port binding.
-- Configure the public domain and proxy in Easypanel under **Domain & Proxy**.
-- Set `SERVER_URL` in `.env` to your Easypanel public URL.
+- Configure the public domain and proxy in Easypanel under **Domain & Proxy** (target port **8080**).
+- Set `SERVER_URL` in `.env` to your Easypanel public URL (or use `https://$(PRIMARY_DOMAIN)` in the Easypanel UI).
 - Do not copy `docker-compose.override.example.yml` on Easypanel.
+
+### Connect to Easypanel PostgreSQL
+
+Compose stacks run on an isolated Docker network. Easypanel Postgres runs on the shared **project network**. Evolution API joins that network via `easypanel-project` in `docker-compose.yml`.
+
+1. In Easypanel, open your **Postgres** service → **Credentials** and copy the internal connection details.
+2. Set these in the compose service **Environment**:
+
+   ```env
+   EASYPANEL_PROJECT_NAME=sass-botflow
+   EASYPANEL_PROJECT_NETWORK=easypanel
+   DATABASE_CONNECTION_URI=postgresql://postgres:YOUR_PASSWORD@sass-botflow_postgres:5432/postgres?schema=evolution_api
+   ```
+
+   Easypanel internal hostname pattern: `{project}_{service}` → `sass-botflow_postgres` for project `sass-botflow` and service `postgres`.
+
+3. Redeploy the compose service.
+
+### Troubleshooting `P1001: Can't reach database server`
+
+| Check | Action |
+| --- | --- |
+| Wrong hostname | Use `sass-botflow_postgres`, not `localhost` or a public IP |
+| Wrong password | Match the Postgres password from Easypanel Credentials |
+| Network isolation | Ensure `EASYPANEL_PROJECT_NETWORK` matches your server network (default: `easypanel`). Run `docker network ls` on the VPS to confirm |
+| Postgres not running | Start the Postgres service in Easypanel before deploying Evolution API |
+
+Test connectivity from the Evolution API container after deploy:
+
+```bash
+docker exec -it evolution-api wget -qO- --timeout=3 sass-botflow_postgres:5432 || echo "TCP check done"
+```
+
+Or from the Easypanel server:
+
+```bash
+docker network inspect easypanel --format '{{range .Containers}}{{.Name}} {{end}}'
+```
+
+Both `sass-botflow_postgres` and `evolution-api` should appear on the same network.
 
 ## Security notes
 
