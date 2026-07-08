@@ -148,7 +148,8 @@ curl http://localhost:8080/health
 This compose file is designed for Easypanel and similar platforms that merge a `docker-compose.override.yml` at deploy time.
 
 - The base `docker-compose.yml` uses `expose: 8080` only — no host port binding.
-- Configure the public domain and proxy in Easypanel under **Domain & Proxy** (target port **8080**).
+- `evolution-api` joins the compose `default` network so Easypanel Traefik can route traffic to it.
+- Configure the public domain and proxy in Easypanel under **Domain & Proxy** (target port **8080**, compose service **`evolution-api`**).
 - Set `SERVER_URL` in `.env` to your Easypanel public URL (or use `https://$(PRIMARY_DOMAIN)` in the Easypanel UI).
 - Do not copy `docker-compose.override.example.yml` on Easypanel.
 
@@ -168,6 +169,15 @@ Compose stacks run on an isolated Docker network. Easypanel Postgres runs on the
    Easypanel internal hostname pattern: `{project}_{service}` → `sass-botflow_postgres` for project `sass-botflow` and service `postgres`.
 
 3. Redeploy the compose service.
+
+### Domain shows "Service is not reachable"
+
+| Check | Action |
+| --- | --- |
+| Compose Service empty | Set to `evolution-api` in the domain settings |
+| Traefik cannot reach container | Redeploy after pulling latest `docker-compose.yml` (adds `default` network) |
+| Cloudflare Proxied | Set `evolution.api.botflow.ink` to **DNS only** (grey cloud) |
+| Wrong service | Configure domain on **`botflow-evolution`**, not a standalone app service |
 
 ### Troubleshooting `P1001: Can't reach database server`
 
