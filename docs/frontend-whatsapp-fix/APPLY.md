@@ -38,3 +38,35 @@ EVOLUTION_API_KEY=<same as botflow-evolution AUTHENTICATION_API_KEY>
 ```
 
 Backend ma khassouch redeploy ila had vars deja set (`evolution: true` f `/health`).
+
+## Fix "Cloudflare gateway returned an error page"
+
+Had error kayban mlli **frontend** (server-side) kay7awel ywsal l `https://api.botflow.ink` **3abr Cloudflare** w Cloudflare kayrj3 HTML (502) bla JSON.
+
+### Fix A — internal URL (recommended)
+
+EasyPanel → **frontend** → Environment → zid:
+
+```env
+BACKEND_API_URL=http://sass-botflow_backend:8000
+NEXT_PUBLIC_API_URL=https://api.botflow.ink
+```
+
+- `BACKEND_API_URL` = server-side calls (BFF) — **bypass Cloudflare**
+- `NEXT_PUBLIC_API_URL` = browser calls — public URL
+
+**Save** → **Redeploy frontend**.
+
+### Fix B — Cloudflare DNS only
+
+Cloudflare → `api.botflow.ink` → **DNS only** (grey cloud, mashi orange).
+
+B7al `evolution.api.botflow.ink`.
+
+### Verify
+
+```bash
+curl -s https://www.botflow.ink/api/health
+```
+
+Ba3d redeploy, jarreb **Connect WhatsApp** — ma khassch tban Cloudflare error.
