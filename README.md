@@ -70,7 +70,7 @@ This repository deploys only Evolution API and Redis. PostgreSQL must be provisi
 6. Verify the deployment:
 
    ```bash
-   curl http://localhost:8080/health
+   curl http://localhost:8080/
    ```
 
 ## Configuration
@@ -136,11 +136,17 @@ docker compose up -d
 
 ## Health check
 
-Evolution API exposes a health endpoint at `/health`. Docker Compose uses it to report container health:
+Evolution API v2.3.7 responds on the root path `/` (not `/health`). Docker Compose uses it to report container health:
 
 ```bash
 docker compose ps
-curl http://localhost:8080/health
+curl http://localhost:8080/
+```
+
+Expected response:
+
+```json
+{"status":200,"message":"Welcome to the Evolution API, it is working!"}
 ```
 
 ## Easypanel deployment
