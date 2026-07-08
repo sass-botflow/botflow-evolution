@@ -7,6 +7,8 @@ services:
     env_file:
       - .env
     environment:
+      DATABASE_ENABLED: ${DATABASE_ENABLED:-true}
+      DATABASE_PROVIDER: ${DATABASE_PROVIDER:-postgresql}
       CACHE_REDIS_URI: redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/${REDIS_DB:-0}
     volumes:
       - evolution_instances:/evolution/instances
