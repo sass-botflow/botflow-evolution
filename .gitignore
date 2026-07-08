@@ -3,7 +3,7 @@
 .env.local
 .env.*.local
 
-# Docker
+# Docker (keep docker-compose.override.example.yml tracked)
 docker-compose.override.yml
 
 # Logs

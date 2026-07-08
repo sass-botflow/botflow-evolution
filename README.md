@@ -53,13 +53,21 @@ This repository deploys only Evolution API and Redis. PostgreSQL must be provisi
    DATABASE_CONNECTION_URI=postgresql://evolution_user:secure_password@postgres.example.com:5432/evolution_db?schema=evolution_api
    ```
 
-4. Start the stack:
+4. For **local development**, expose the API port on the host:
+
+   ```bash
+   cp docker-compose.override.example.yml docker-compose.override.yml
+   ```
+
+   Skip this step on **Easypanel** — it injects its own `docker-compose.override.yml` with proxy routing. Binding port 8080 in both files causes a "port is already allocated" error.
+
+5. Start the stack:
 
    ```bash
    docker compose up -d
    ```
 
-5. Verify the deployment:
+6. Verify the deployment:
 
    ```bash
    curl http://localhost:8080/health
@@ -85,7 +93,7 @@ Service hostnames and container names are configurable via environment variables
 | `REDIS_HOST` | `redis` | DNS alias used by Evolution API to reach Redis |
 | `REDIS_CONTAINER_NAME` | `evolution-redis` | Docker container name |
 | `DOCKER_NETWORK_NAME` | `evolution-net` | Docker bridge network name |
-| `EVOLUTION_PORT` | `8080` | Host port mapped to Evolution API |
+| `EVOLUTION_PORT` | `8080` | Host port for local dev (`docker-compose.override.yml` only) |
 
 `CACHE_REDIS_URI` is assembled automatically in `docker-compose.yml` from `REDIS_HOST`, `REDIS_PORT`, and `REDIS_DB`.
 
@@ -132,6 +140,15 @@ Evolution API exposes a health endpoint at `/health`. Docker Compose uses it to 
 docker compose ps
 curl http://localhost:8080/health
 ```
+
+## Easypanel deployment
+
+This compose file is designed for Easypanel and similar platforms that merge a `docker-compose.override.yml` at deploy time.
+
+- The base `docker-compose.yml` uses `expose: 8080` only — no host port binding.
+- Configure the public domain and proxy in Easypanel under **Domain & Proxy**.
+- Set `SERVER_URL` in `.env` to your Easypanel public URL.
+- Do not copy `docker-compose.override.example.yml` on Easypanel.
 
 ## Security notes
 
