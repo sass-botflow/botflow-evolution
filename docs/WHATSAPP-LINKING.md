@@ -14,7 +14,50 @@ User → botflow.ink (frontend) → Evolution API → WhatsApp Web QR → Scan �
 curl -s https://evolution.api.botflow.ink/                    # Evolution OK?
 curl -s https://www.botflow.ink/api/channels/whatsapp/diagnostics  # Frontend → Evolution?
 curl -s https://api.botflow.ink/health                        # Backend OK?
+curl -s https://www.botflow.ink/api/health | python3 -m json.tool  # buildTime jdid?
 ```
+
+---
+
+## ⚠️ QR ma kaytl3ach — 3lach deploy 11 sec ma kayfixich
+
+Ila katban **"Evolution API offline"** + **"Generating QR code..."** bqa twila:
+
+| Check | Daba | Khass |
+|-------|------|-------|
+| Evolution public | ✅ 200 | OK |
+| Frontend build | ❌ `5b209f3` (9dim) | Build jdid |
+| Deploy time | ❌ 11 sec = restart | **5–10 d9aya** |
+| Frontend PR #66 | ❌ ma mergedch | **Merge obligatoire** |
+| `qrcode` npm | ❌ ma kaynach f main | PR #66 kayzidha |
+| URL order f code | ❌ public URL lwl | PR #66 kaybdl l internal |
+
+**Deploy 11 secondes = ma tbdlch code.** Frontend mazal kayst3mel version 9dima li:
+1. Katjarreb `https://evolution.api.botflow.ink` **qbel** internal Docker URL → Cloudflare HTML/timeout → **"Evolution API offline"**
+2. Ma 3ndha `qrcode` package → Evolution pairing code `2@...` ma kaytrenderch QR image
+
+**Ma kaynach fix b env ghir** — khass **merge PR #66** + **deploy ma9ad**.
+
+### Fix (3 clics + stana 10 d9aya)
+
+1. **Merge:** https://github.com/sass-botflow/frontend/pull/66
+2. **Easypanel → frontend → Environment:**
+
+   ```env
+   EVOLUTION_API_URL=http://evolution-api:8080
+   EVOLUTION_API_KEY=<nfs AUTHENTICATION_API_KEY dyal botflow-evolution>
+   BACKEND_API_URL=http://sass-botflow_backend:8000
+   ```
+
+3. **Easypanel → frontend → Deploy** (Source = GitHub) — **stana 5–10 d9aya**
+   - Ila tssala f < 1 min → ma deployatich build jdid
+4. Verif:
+
+   ```bash
+   curl -s https://www.botflow.ink/api/health | python3 -m json.tool
+   ```
+
+   `buildTime` khass ykon **daba** (mashi 30h 9dim)
 
 ---
 
