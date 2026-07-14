@@ -11,6 +11,11 @@ services:
       DATABASE_ENABLED: ${DATABASE_ENABLED:-true}
       DATABASE_PROVIDER: ${DATABASE_PROVIDER:-postgresql}
       CACHE_REDIS_URI: redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/${REDIS_DB:-0}
+      # Baileys QR — sync with whatsappWebVersion from GET /
+      CONFIG_SESSION_PHONE_VERSION: ${CONFIG_SESSION_PHONE_VERSION:-2.3000.1043159177}
+      CONFIG_SESSION_PHONE_CLIENT: ${CONFIG_SESSION_PHONE_CLIENT:-Evolution API}
+      CONFIG_SESSION_PHONE_NAME: ${CONFIG_SESSION_PHONE_NAME:-Chrome}
+      QRCODE_LIMIT: ${QRCODE_LIMIT:-30}
     volumes:
       - evolution_instances:/evolution/instances
     depends_on:
