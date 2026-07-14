@@ -15,14 +15,17 @@ services:
     depends_on:
       - redis
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/health || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
     networks:
-      - default
-      - easypanel
+      default: {}
+      easypanel:
+        aliases:
+          - evolution-api
+          - sass-botflow-evolution-api
 
   redis:
     image: redis:7-alpine

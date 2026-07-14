@@ -70,7 +70,7 @@ This repository deploys only Evolution API and Redis. PostgreSQL must be provisi
 6. Verify the deployment:
 
    ```bash
-   curl http://localhost:8080/health
+   curl http://localhost:8080/
    ```
 
 ## Configuration
@@ -136,11 +136,17 @@ docker compose up -d
 
 ## Health check
 
-Evolution API exposes a health endpoint at `/health`. Docker Compose uses it to report container health:
+Evolution API v2.3.7 responds on the root path `/` (not `/health`). Docker Compose uses it to report container health:
 
 ```bash
 docker compose ps
-curl http://localhost:8080/health
+curl http://localhost:8080/
+```
+
+Expected response:
+
+```json
+{"status":200,"message":"Welcome to the Evolution API, it is working!"}
 ```
 
 ## Easypanel deployment
@@ -201,6 +207,57 @@ docker network inspect easypanel --format '{{range .Containers}}{{.Name}} {{end}
 ```
 
 Both `sass-botflow_postgres` and `evolution-api` should appear on the same network.
+
+## Connect BotFlow backend (WhatsApp QR scan)
+
+Evolution API alone is not enough for `botflow.ink` users to scan QR codes. The **BotFlow backend** (`api.botflow.ink`) must be redeployed with the latest Evolution integration.
+
+### Symptom
+
+Frontend shows:
+
+```text
+Cannot POST /api/channels/whatsapp/connect
+```
+
+Evolution API at `https://evolution.api.botflow.ink/` works, but the backend is still running an **old image** (`buildCommit: v1.0.0-mr84xgy9`) that only supports Meta OAuth (`GET /connect`), not Evolution (`POST /connect`).
+
+### Fix in Easypanel
+
+1. Open **sass-botflow** → **backend** service.
+2. **Source** → confirm `sass-botflow/backend` branch `main` or image `ghcr.io/sass-botflow/backend:latest`.
+3. **Environment** → add or update:
+
+   ```env
+   EVOLUTION_API_URL=https://evolution.api.botflow.ink
+   EVOLUTION_API_KEY=<same value as AUTHENTICATION_API_KEY in botflow-evolution>
+   EVOLUTION_WEBHOOK_URL=https://api.botflow.ink/webhooks/evolution
+   ```
+
+   Use the public Evolution URL above unless backend and `botflow-evolution` share the same Docker network; then you may use `http://botflow-evolution_evolution-api:8080` (verify with `docker network inspect easypanel`).
+
+4. **Deploy** with **Clear build cache** (wait 5–10 minutes for a real rebuild).
+5. Verify:
+
+   ```bash
+   curl -s https://api.botflow.ink/health | python3 -m json.tool
+   ```
+
+   Expected after redeploy:
+
+   | Field | Expected |
+   | --- | --- |
+   | `buildCommit` | New value (not `v1.0.0-mr84xgy9`) |
+   | `whatsappReady` | `true` |
+   | `modules.whatsapp` | `true` |
+
+   ```bash
+   curl -s -o /dev/null -w "%{http_code}\n" -X POST https://api.botflow.ink/api/channels/whatsapp/connect
+   ```
+
+   Expected: **401** (route exists, needs JWT) — **not 404**.
+
+6. In BotFlow dashboard → **Connect** → **Connect WhatsApp Business** → QR modal should appear.
 
 ## Security notes
 
