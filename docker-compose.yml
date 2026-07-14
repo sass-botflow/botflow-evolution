@@ -21,8 +21,11 @@ services:
       retries: 3
       start_period: 60s
     networks:
-      - default
-      - easypanel
+      default: {}
+      easypanel:
+        aliases:
+          - evolution-api
+          - sass-botflow-evolution-api
 
   redis:
     image: redis:7-alpine
