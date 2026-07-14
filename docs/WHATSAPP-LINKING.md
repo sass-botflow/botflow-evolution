@@ -19,7 +19,27 @@ curl -s https://www.botflow.ink/api/health | python3 -m json.tool  # buildTime j
 
 ---
 
-## ⚠️ QR ma kaytl3ach — 3lach deploy 11 sec ma kayfixich
+## ⚠️ QR "Generating..." bqa twila — fix daba
+
+PR #66 merged ✅ walakin QR mazal kaytblocka 7it:
+
+1. **Hostname ghalat** — frontend kayst3mel `sass-botflow_botflow-evolution:8080` walakin Evolution container ma 3ndoch had alias
+2. **Bug f code** — `evolutionGetQr` ma kaycreatich instance ila connect fail
+
+### Fix f 2 repos (ordre mohim)
+
+#### A) botflow-evolution — redeploy (PR #5)
+Merge + redeploy: network aliases `sass-botflow_botflow-evolution` + `sass-botflow_evolution-api`
+
+#### B) frontend — merge PR jdid (patch f `docs/frontend-whatsapp-fix/v3/`)
+Branch: `cursor/fix-qr-stuck-generating-1434` (copy files mn docs wla merge PR)
+
+#### C) Easypanel → frontend env (bdl had line)
+```env
+EVOLUTION_API_URL=http://evolution-api:8080
+```
+
+---
 
 Ila katban **"Evolution API offline"** + **"Generating QR code..."** bqa twila:
 
