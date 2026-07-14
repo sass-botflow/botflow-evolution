@@ -1,6 +1,7 @@
 services:
   evolution-api:
     image: evoapicloud/evolution-api:v2.3.7
+    pull_policy: always
     restart: unless-stopped
     expose:
       - "8080"
@@ -29,6 +30,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    pull_policy: always
     restart: unless-stopped
     command: redis-server --appendonly yes
     volumes:
