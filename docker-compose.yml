@@ -1,6 +1,7 @@
 services:
   evolution-api:
     image: evoapicloud/evolution-api:v2.3.7
+    pull_policy: always
     restart: unless-stopped
     expose:
       - "8080"
@@ -26,9 +27,12 @@ services:
         aliases:
           - evolution-api
           - sass-botflow-evolution-api
+          - sass-botflow_evolution-api
+          - sass-botflow_botflow-evolution
 
   redis:
     image: redis:7-alpine
+    pull_policy: always
     restart: unless-stopped
     command: redis-server --appendonly yes
     volumes:

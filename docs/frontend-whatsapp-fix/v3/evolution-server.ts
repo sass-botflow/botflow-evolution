@@ -1,9 +1,18 @@
+import QRCode from "qrcode";
+
 const INTEGRATION = "WHATSAPP-BAILEYS";
-const REQUEST_TIMEOUT_MS = 8_000;
+const DEFAULT_REQUEST_TIMEOUT_MS = 25_000;
+const FAST_FAIL_TIMEOUT_MS = 4_000;
 
 export interface EvolutionConfig {
   baseUrl: string;
   apiKey: string;
+}
+
+function isInternalEvolutionUrl(url: string): boolean {
+  return /^https?:\/\/(sass-botflow_|botflow-|evolution-api|localhost|127\.0\.0\.1)/i.test(
+    url,
+  );
 }
 
 function getEvolutionBaseUrlCandidates(): string[] {
@@ -15,11 +24,18 @@ function getEvolutionBaseUrlCandidates(): string[] {
     envUrl,
     "http://evolution-api:8080",
     "http://sass-botflow-evolution-api:8080",
+    "http://sass-botflow_evolution-api:8080",
     "http://sass-botflow_botflow-evolution:8080",
     "https://evolution.api.botflow.ink",
   ].filter((value): value is string => Boolean(value));
 
   return [...new Set(candidates.map((value) => value.replace(/\/$/, "")))];
+}
+
+function getRequestTimeoutMs(baseUrl: string): number {
+  return isInternalEvolutionUrl(baseUrl)
+    ? FAST_FAIL_TIMEOUT_MS
+    : DEFAULT_REQUEST_TIMEOUT_MS;
 }
 
 export function getEvolutionConfig(): EvolutionConfig | null {
@@ -60,7 +76,14 @@ export function extractQrBase64(payload: unknown): string | null {
 
   const record = payload as Record<string, unknown>;
 
-  const directCandidates = [record.base64, record.qrcode, record.qrCode, record.qr];
+  const directCandidates = [
+    record.base64,
+    record.qrcode,
+    record.qrCode,
+    record.qr,
+    record.code,
+    record.pairingCode,
+  ];
   for (const candidate of directCandidates) {
     if (typeof candidate === "string" && candidate.trim()) {
       return normalizeQrValue(candidate.trim());
@@ -79,27 +102,6 @@ export function extractQrBase64(payload: unknown): string | null {
   return null;
 }
 
-export function extractQrPairingCode(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") return null;
-
-  const record = payload as Record<string, unknown>;
-
-  for (const key of ["qrcode", "qr", "data", "response"]) {
-    const nested = record[key];
-    if (nested && typeof nested === "object") {
-      const extracted = extractQrPairingCode(nested);
-      if (extracted) return extracted;
-    }
-  }
-
-  const code = record.code;
-  if (typeof code === "string" && code.trim().startsWith("2@")) {
-    return code.trim();
-  }
-
-  return null;
-}
-
 function normalizeQrValue(value: string): string | null {
   if (!value) return null;
 
@@ -107,11 +109,45 @@ function normalizeQrValue(value: string): string | null {
     return value;
   }
 
-  if (value.startsWith("2@") || value.length < 40) {
+  // Evolution often returns a raw pairing payload (e.g. "2@...") instead of PNG base64.
+  if (value.startsWith("2@")) {
+    return value;
+  }
+
+  if (value.length < 40) {
     return null;
   }
 
   return value;
+}
+
+export async function resolveQrImageData(raw: string): Promise<string | null> {
+  const normalized = normalizeQrValue(raw);
+  if (!normalized) return null;
+
+  if (normalized.startsWith("data:image")) {
+    return normalized;
+  }
+
+  if (normalized.startsWith("2@")) {
+    try {
+      return await QRCode.toDataURL(normalized, {
+        margin: 1,
+        width: 512,
+        errorCorrectionLevel: "M",
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  return `data:image/png;base64,${normalized}`;
+}
+
+export async function extractQrImageData(payload: unknown): Promise<string | null> {
+  const raw = extractQrBase64(payload);
+  if (!raw) return null;
+  return resolveQrImageData(raw);
 }
 
 export function mapConnectionState(
@@ -148,6 +184,7 @@ async function evolutionRequest<T>(
   method: string,
   path: string,
   body?: unknown,
+  timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
 ): Promise<T> {
   const apiKey = process.env.EVOLUTION_API_KEY?.trim();
   const baseUrls = getEvolutionBaseUrlCandidates();
@@ -167,7 +204,11 @@ async function evolutionRequest<T>(
           apikey: apiKey,
         },
         body: body !== undefined ? JSON.stringify(body) : undefined,
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        signal: AbortSignal.timeout(
+          timeoutMs === DEFAULT_REQUEST_TIMEOUT_MS
+            ? getRequestTimeoutMs(baseUrl)
+            : timeoutMs,
+        ),
         cache: "no-store",
       });
 
@@ -232,6 +273,7 @@ export async function testEvolutionConnectivity(): Promise<{
   ok: boolean;
   baseUrl: string | null;
   message: string;
+  apiKeyValid?: boolean;
 }> {
   const apiKey = process.env.EVOLUTION_API_KEY?.trim();
   const baseUrls = getEvolutionBaseUrlCandidates();
@@ -241,20 +283,36 @@ export async function testEvolutionConnectivity(): Promise<{
       ok: false,
       baseUrl: null,
       message: "EVOLUTION_API_KEY is not set on the frontend server.",
+      apiKeyValid: false,
     };
   }
 
   for (const baseUrl of baseUrls) {
     try {
-      const response = await fetch(baseUrl, {
+      const response = await fetch(`${baseUrl}/instance/fetchInstances`, {
         headers: { apikey: apiKey },
-        signal: AbortSignal.timeout(5_000),
+        signal: AbortSignal.timeout(8_000),
         cache: "no-store",
       });
       const text = await response.text();
 
+      if (response.status === 401 || response.status === 403) {
+        return {
+          ok: false,
+          baseUrl,
+          message:
+            "EVOLUTION_API_KEY is invalid. It must match AUTHENTICATION_API_KEY on evolution-api.",
+          apiKeyValid: false,
+        };
+      }
+
       if (response.ok && !isHtmlPayload(text)) {
-        return { ok: true, baseUrl, message: "Evolution API reachable" };
+        return {
+          ok: true,
+          baseUrl,
+          message: "Evolution API authenticated and reachable",
+          apiKeyValid: true,
+        };
       }
     } catch {
       continue;
@@ -265,10 +323,12 @@ export async function testEvolutionConnectivity(): Promise<{
     ok: false,
     baseUrl: null,
     message: "Could not reach Evolution API from the frontend container.",
+    apiKeyValid: undefined,
   };
 }
 
 export async function createEvolutionInstance(instanceName: string): Promise<void> {
+  const CREATE_TIMEOUT_MS = 45_000;
   const payload: Record<string, unknown> = {
     instanceName,
     integration: INTEGRATION,
@@ -286,7 +346,7 @@ export async function createEvolutionInstance(instanceName: string): Promise<voi
   }
 
   try {
-    await evolutionRequest("POST", "/instance/create", payload);
+    await evolutionRequest("POST", "/instance/create", payload, CREATE_TIMEOUT_MS);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (!/already|exist/i.test(message)) {
@@ -323,9 +383,13 @@ export async function fetchEvolutionInstance(instanceName: string) {
 }
 
 export async function connectEvolutionInstance(instanceName: string) {
+  const CONNECT_TIMEOUT_MS = 45_000;
+
   return evolutionRequest<unknown>(
     "GET",
     `/instance/connect/${encodeURIComponent(instanceName)}`,
+    undefined,
+    CONNECT_TIMEOUT_MS,
   );
 }
 
