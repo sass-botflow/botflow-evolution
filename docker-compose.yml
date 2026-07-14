@@ -27,6 +27,8 @@ services:
         aliases:
           - evolution-api
           - sass-botflow-evolution-api
+          - sass-botflow_evolution-api
+          - sass-botflow_botflow-evolution
 
   redis:
     image: redis:7-alpine
